@@ -221,7 +221,7 @@ class TableEditor
         }
         else
         {
-            $primaryKeyString = "`" . $newPrimary . "`";
+            $primaryKeyString = "(`" . $newPrimary . "`)";
         }
         
         $query = 
