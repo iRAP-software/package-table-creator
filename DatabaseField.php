@@ -33,6 +33,16 @@ class DatabaseField
     const TYPE_DATE      = "DATE";
     const TYPE_TIMESTAMP = "TIMESTAMP";
     
+    # Spatial types
+    const TYPE_POINT               = "POINT";
+    const TYPE_LINESTRING          = "LINESTRING";
+    const TYPE_POLYGON             = "POLYGON";
+    const TYPE_MULTI_POINT         = "MULTIPOINT";
+    const TYPE_MULTI_LINE_STRING   = "MULTILINESTRING";
+    const TYPE_MULTI_POLYGON       = "MULTIPOLYGON";
+    const TYPE_GEOMETRY_COLLECTION = "GEOMETRYCOLLECTION";
+    const TYPE_GEOMETRY            = "GEOMETRY";
+    
     
     /**
      * Private constructor because this object must be created by one of the 
@@ -74,7 +84,7 @@ class DatabaseField
         return $field;
     }
     
-
+    
     /**
      * Factory method for creating a boolean (tiny int) type
      * @param string $name - the name of the field/column
@@ -122,7 +132,7 @@ class DatabaseField
         $field = new DatabaseField($name, self::TYPE_TINYTEXT);
         return $field;
     }
-        
+    
     
     /**
      * Factory method for creating a LONG_TEXT type database field
@@ -205,6 +215,111 @@ class DatabaseField
                                intval($precisionAfter);
         return $field;
     }
+    
+    
+    /**
+     * Create a POINT field
+     * https://mariadb.com/kb/en/mariadb/point/
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createPoint($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_POINT);
+        return $field;
+    }
+    
+    
+    /**
+     * Create a LineString field
+     * https://mariadb.com/kb/en/mariadb/linestring/
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createLineString($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_LINESTRING);
+        return $field;
+    }
+    
+    /**
+     * Create a Polygon field
+     * https://mariadb.com/kb/en/mariadb/polygon/
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createPolygon($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_POLYGON);
+        return $field;
+    }
+    
+    
+    /**
+     * Create a MultiPoint field
+     * https://mariadb.com/kb/en/mariadb/multipoint/
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createMultiPoint($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_MULTI_POINT);
+        return $field;
+    }
+    
+    
+    /**
+     * Create a MultiPoint field
+     * https://mariadb.com/kb/en/mariadb/multilinestring/
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createMultiLineString($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_MULTI_LINE_STRING);
+        return $field;
+    }
+    
+    
+    /**
+     * Create a MultiPoint field
+     * https://mariadb.com/kb/en/mariadb/multipolygon/
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createMultiPolygon($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_MULTI_POLYGON);
+        return $field;
+    }
+    
+    
+    /**
+     * Create a GeometryCollection field
+     * https://mariadb.com/kb/en/mariadb/geometrycollection/
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createGeometryCollection($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_GEOMETRY_COLLECTION);
+        return $field;
+    }
+    
+    
+    /**
+     * Create a geometry field
+     * https://mariadb.com/kb/en/mariadb/geometry-types/#geometrygeometry
+     * @param string $name - the name to give the field/column
+     * @return \iRAP\TableCreator\DatabaseField
+     */
+    public static function createGeometry($name)
+    {
+        $field = new DatabaseField($name, self::TYPE_GEOMETRY);
+        return $field;
+    }
+    
+    
     
     
     /**
