@@ -17,7 +17,7 @@ class TableCreator
     private $m_engine;
     private $m_combinedKeys = array(); # multi-column keys
     private $m_combinedUniqueKeys = array(); # unique multi-column keys
-    private $m_combinedPrimaryKey;
+    private $m_primaryKey;
     private $m_foreignKeys = array();
     private $m_mysqliConn; # the mysqli connection to the database.
     private $m_charSet = null; # if left null, will utilize the db default.
@@ -197,17 +197,7 @@ class TableCreator
             $fieldStrings[] = $field->getFieldString();
                 
             /* @var $field DatabaseField */
-            if ($field->isPrimaryKey())
-            {
-                if ($primaryKeyString != "")
-                {
-                    throw new \Exception('Table Creator: you appear to have ' .
-                                         'multiple primary keys');
-                }
-                
-                $primaryKeyString = "PRIMARY KEY (" . $field_name . ")";
-            }
-            elseif ($field->isKey())
+            if ($field->isKey())
             {
                 if ($keysString !== "")
                 {
@@ -282,17 +272,9 @@ class TableCreator
         }
         
         # Add the Primary key (can only be one)
-        if ($this->m_combinedPrimaryKey != null)
+        if ($this->m_primaryKey != null)
         {
-            if ($primaryKeyString != "")
-            {
-                throw new \Exception('Table Creator: you appear to have ' .
-                                     'multiple primary keys');
-            }
-            
-            $primaryKeyString = "PRIMARY KEY (" . 
-                                    implode(",", $this->m_combinedPrimaryKey) . 
-                                ") ";
+            $primaryKeyString = "PRIMARY KEY (" . implode(",", $this->m_primaryKey) . ") ";
         }
         
         $engine_string = "ENGINE=" . $this->m_engine . " ";
@@ -507,21 +489,11 @@ class TableCreator
     {
         if (is_array($primary_key))
         {
-            $this->m_combinedPrimaryKey = $primary_key;
+            $this->m_primaryKey = $primary_key;
         }
         else
         {
-            if (isset($this->m_fields[$primary_key]))
-            {
-                $this->m_fields[$primary_key]->setPrimaryKey();
-            }
-            else
-            {
-                $errMsg = '[' . $primary_key . '] does not exist in table ' .
-                          '[' . $this->m_name . ']';
-                
-                throw new \Exception($errMsg);
-            }
+            $this->m_primaryKey = array($primary_key);
         }
     }
     

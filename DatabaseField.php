@@ -161,12 +161,6 @@ class DatabaseField
         $field->m_constraint = $size;
         $field->m_autoIncrementing = $autoInc;
         
-        # Only one field can auto increment and it must be a primary key
-        if ($autoInc)
-        {
-            $field->setPrimaryKey();
-        }
-        
         return $field;
     }
     
@@ -345,16 +339,6 @@ class DatabaseField
         {
             $this->m_default = null; # unset it
         }
-    }
-    
-    
-    /**
-     * Specify that this field is a primary key
-     */
-    public function setPrimaryKey()
-    {
-        $this->setKey();
-        $this->m_isPrimary = true;
     }
     
     
