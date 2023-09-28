@@ -27,9 +27,9 @@ class TableCreator
     
     
     /**
-     * 
+     * Create a MySQL table creator.
      * @param Mys$mysqliConn
-     * @param MySQLi $name - the name of the table
+     * @param string $name - the name of the table
      * @param string $engine - the engine, e.g use one of this classes ENGINE 
      *                         constants
      * @param array $fields - optionally specify the list of DatabaseField
