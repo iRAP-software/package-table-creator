@@ -16,7 +16,8 @@ use stdClass;
 
 class TableCreator
 {
-    private string $m_name; # The name of this table
+    private string $m_tableName; # The name of this table
+    private string $m_escapedTableName; # The name of this table
     private array $m_fields = array(); # DatabaseField objects table consists of.
     private string $m_engine;
     private array $m_combinedKeys = array(); # multi-column keys
@@ -56,7 +57,8 @@ class TableCreator
                                  'of the allowed types.');
         }
         
-        $this->m_name = $name;
+        $this->m_tableName = $name;
+        $this->m_escapedTableName = mysqli_escape_string($this->m_mysqliConn, $this->m_tableName);
         $this->m_engine = $engine;
         
         $this->addFields($fields);
@@ -133,7 +135,7 @@ class TableCreator
             {
                 $err_msg = 
                     'Table Creator: one or more fields in combined key not ' .
-                    'found in table [' . $this->m_name . '] with fields: ' . 
+                    'found in table [' . $this->m_tableName . '] with fields: ' .
                     print_r($this->m_fields, true) . PHP_EOL .
                     'when adding key: ' . print_r($key, true);
 
@@ -149,7 +151,7 @@ class TableCreator
             else
             {
                 $err_msg = '[' . $key . '] field not found in table ' .
-                           '[' . $this->m_name . '] when adding a key';
+                           '[' . $this->m_tableName . '] when adding a key';
                 
                 throw new Exception($err_msg);
             }
@@ -168,6 +170,7 @@ class TableCreator
      *                               to child tables
      * @param bool $update_cascade - override to true to have updates carry 
      *                               over to child tables
+     * @return void
      */
     public function addForeignKey(
         string $table_column,
@@ -175,7 +178,7 @@ class TableCreator
         string $reference_column,
         bool $delete_cascade = false,
         bool $update_cascade = false
-    )
+    ) : void
     {
         $foreignKey = new stdClass();
         $foreignKey->table_column     = $table_column;
@@ -306,7 +309,7 @@ class TableCreator
             $characterset_string = " DEFAULT CHARSET={$this->m_charSet}";
         }
         
-        $query = "CREATE TABLE `{$this->m_name}` ({$fieldsString}) {$engine_string}{$characterset_string}";
+        $query = "CREATE TABLE `{$this->m_escapedTableName}` ({$fieldsString}) {$engine_string}{$characterset_string}";
         $result = $this->m_mysqliConn->query($query);
         
         if ($result !== TRUE)
@@ -347,7 +350,7 @@ class TableCreator
             else
             {
                 $err_msg = '[' . $fieldNames . '] field not found in table ' .
-                           '[' . $this->m_name . '] when setting null fields';
+                           '[' . $this->m_tableName . '] when setting null fields';
 
                 throw new Exception($err_msg);
             }
@@ -443,7 +446,7 @@ class TableCreator
             {
                 $fields = print_r($this->m_fields, true);
                 $err_msg = '[' . $fieldNames . '] field not found in table ' .
-                           '[' . $this->m_name . '] when setting default ' . 
+                           '[' . $this->m_tableName . '] when setting default ' .
                            'fields. Fields: ' . $fields;
 
                 throw new Exception($err_msg);
@@ -471,7 +474,7 @@ class TableCreator
             else
             {
                 $err_msg = '[' . $field_name . '] field not found in table ' .
-                           '[' . $this->m_name . '] when setting allow_null';
+                           '[' . $this->m_tableName . '] when setting allow_null';
                 
                 throw new Exception($err_msg);
             }
@@ -540,7 +543,7 @@ class TableCreator
         else
         {
             $err_msg = '[' . $field_name . '] does not exist in table ' .
-                       '[' . $this->m_name . ']';
+                       '[' . $this->m_tableName . ']';
             
             throw new Exception($err_msg);
         }
