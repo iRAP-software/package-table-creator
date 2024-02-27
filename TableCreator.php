@@ -28,19 +28,19 @@ class TableCreator
     
     /**
      * Create a MySQL table creator.
-     * @param Mys$mysqliConn
+     * @param \mysqli $conn
      * @param string $name - the name of the table
-     * @param string $engine - the engine, e.g use one of this classes ENGINE 
-     *                         constants
-     * @param array $fields - optionally specify the list of DatabaseField
-                              objects that this table consists of. They can 
-     *                        always be specified later with addField functions.
-     * @throws Exception
+     * @param string $engine - the engine, e.g use one of this classes ENGINE constants
+     * @param array $fields - optionally specify the list of DatabaseField objects that this table consists of. They
+     * can always be specified later with addField functions.
+     * @throws \Exception
      */
-    public function __construct(\mysqli $conn,
-                                $name, 
-                                $engine="INNODB", 
-                                array $fields = array())
+    public function __construct(
+        \mysqli $conn,
+        string $name,
+        string $engine = "INNODB",
+        array $fields = array()
+    )
     {
         $this->m_mysqliConn = $conn;
         
