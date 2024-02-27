@@ -8,46 +8,43 @@
 namespace iRAP\TableCreator;
 
 
+use Exception;
+use mysqli;
+
 class TableEditor
 {
-    private $m_name; # The name of this table
-    private $m_add_fields = array(); # array of DatabaseField objects that we are adding.
-    private $m_remove_fields = array(); # array of DatabaseField objects that we are removing.
-    private $m_remove_keys = array(); # array of indexes/keys we wish to remove.
-   
-    private $m_combined_keys = array(); # array of arrays that represent combined-keys.
-    private $m_combined_unique_keys = array(); # array of arrays that represent unique combined keys
-    
-    private $m_mysqliConn; # the mysqli connection to the database.
+    private string $m_name; # The name of this table
+
+    private mysqli $m_mysqliConn; # the mysqli connection to the database.
     
     
     const ENGINE_INNODB = 'INNODB';
     const ENGINE_MYISAM = 'MYISAM';
-    
-    
+
+
     /**
-     * 
-     * @param Mys$mysqliConn
-     * @param MySQLi $name - the name of the table
-     * @param string $engine - the engine, e.g use one of this classes ENGINE constants
-     * @param array $fields - optionally specify the array list of DatabaseField objects that this
-     *                       table consists of. They can always be specified later with add_field 
-     *                       functions.
-     * @throws Exception
+     * Create a table editor.
+     * @param mysqli $mysqliConn - the connection to the database.
+     * @param string $name - the name of the table that is being edited.
      */
-    public function __construct($mysqliConn, $name)
+    public function __construct(mysqli $mysqliConn, string $name)
     {
         $this->m_mysqliConn = $mysqliConn;
         $this->m_name = $name;
     }
-    
-        
+
+
     /**
      * Adds the specified fields to this table.
      * @param array $fields - an array of DatabaseField objects
+     * @return void
+     * @throws Exception - if one of the fields being added is set to primary key. In such a case, the developer should
+     * call the changePrimaryKey method instead.
      */
-    public function addFields(array $fields)
+    public function addFields(array $fields) : void
     {
+        $addFields = [];
+
         foreach ($fields as $field)
         {
             $name = $field->getName();
@@ -66,7 +63,7 @@ class TableEditor
             {
                 $errMsg = 'Do not set field to be primary key when adding fields. ' .
                           'Instead, use the changePrimaryKey method';
-                throw new \Exception($errMsg);
+                throw new Exception($errMsg);
             }
             elseif ($field->isKey())
             {
@@ -85,37 +82,20 @@ class TableEditor
         }
         
         $fieldsString = implode(", ", $fieldStrings);
-        
         $fieldsString .= $keysString;
-        
-        $query = 
-            "ALTER TABLE " . 
-            "`" . $this->m_name . "` " . 
-            "ADD " .
-            "(" . $fieldsString . ") ";
-        
-        $result = $this->m_mysqliConn->query($query);
-        
-        if ($result !== TRUE)
-        {
-            throw new \Exception('Error creating table with query: ' . $query);
-        }
+        $query = "ALTER TABLE `{$this->m_name}` ADD ({$fieldsString})";
+        $this->m_mysqliConn->query($query);
     }
     
     
     /**
      * Adds the DatabaseField object to this table.
-     * @param DatabaseField $field
+     * @param string $fieldName
      */
-    public function removeField(String $fieldName)
+    public function removeField(string $fieldName) : void
     {
-        $query = 
-            "ALTER TABLE " . 
-            '`' . $this->m_name . '` ' . 
-            "DROP COLUMN `" . $field . "`";
-        
-        $result = $this->m_mysqliConn->query($query);
-        return $result;
+        $query = "ALTER TABLE `{$this->m_name}` DROP COLUMN `{$fieldName}`";
+        $this->m_mysqliConn->query($query);
     }
     
     
@@ -123,7 +103,7 @@ class TableEditor
      * Adds the DatabaseField object to this table.
      * @param array<String> $fields
      */
-    public function removeFields(array $fields)
+    public function removeFields(array $fields) : void
     {
         foreach ($fields as $fieldName)
         {
@@ -134,10 +114,9 @@ class TableEditor
     
     /**
      * Remove a key from the database. This does not remove the field itself.
-     * @param String $key - the name of the field that is currently a key.
-     * @throws Exception
+     * @param string|array $key - the name(s) of the field(s) that currently act as the key that we wish to remove.
      */
-    public function removeKey($key)
+    public function removeKey(string|array $key) : void
     {
         if (is_array($key))
         {
@@ -148,23 +127,19 @@ class TableEditor
             $keyString = "`" . $key . "`";
         }
         
-        $query = 
-            "ALTER TABLE " . 
-            '`' . $this->m_name . '` ' . 
-            "DROP INDEX " . $keyString;
-        
-        $result = $this->m_mysqliConn->query($query);
-        return $result;
+        $query = "ALTER TABLE `{$this->m_name}` DROP INDEX {$keyString}";
+        $this->m_mysqliConn->query($query);
     }
-    
-    
+
+
     /**
      * Given a list of $keys, this adds each one as a key. A key can be a field name or an array
-     * of field names which represents a combined-key.
+     *  of field names which represents a combined-key.
      * @param array $keys - array of field names or arrays that represent a combined-key
+     * @param bool $unique - whether these keys are to be unique.
      * @return void
      */
-    public function addKeys(array $keys, $unique=false)
+    public function addKeys(array $keys, bool $unique=false) : void
     {
         foreach ($keys as $key)
         {
@@ -175,12 +150,12 @@ class TableEditor
     
     /**
      * Adds a key to the table. This is NOT for primary keys.
-     * @param mixed $key - String representing the field name to act as key, or array of field names
-     *               for a single "combined" key.
+     * @param mixed $key - String representing the field name to act as key, or array of field names for a single
+     * "combined" key.
      * @param bool $unique - optionally set to true to make this a unique key.
      * @return void.
      */
-    public function addKey($key, $unique=false)
+    public function addKey(string|array $key, bool $unique=false) : void
     {
         if (is_array($key))
         {
@@ -198,11 +173,8 @@ class TableEditor
             $uniqueString = "UNIQUE";
         }
         
-        $query = "ALTER TABLE `" . $this->m_name . "` " .
-                 "ADD " . $uniqueString . " KEY(" . $keyString . ")";
-        
-        $result = $this->m_mysqliConn->query($query);
-        return $result;
+        $query = "ALTER TABLE `{$this->m_name}` ADD {$uniqueString} KEY({$keyString})";
+        $this->m_mysqliConn->query($query);
     }
     
     
@@ -210,14 +182,14 @@ class TableEditor
     /**
      * Change the primary key to something else (you can only have one primary key, although it
      * can be made up of multiple fields).
-     * @param mixed $newPrimary - string fieldname or array of fieldnames that make up a combined
+     * @param mixed $newPrimary - string field name or array of field names that make up a combined
      *                            primary key.
      */
-    public function changePrimaryKey($newPrimary)
+    public function changePrimaryKey(string|array $newPrimary) : void
     {
         if (is_array($newPrimary))
         {
-            $primaryKeyString = "(" . implode(",", $key) . ")";
+            $primaryKeyString = "(" . implode(",", $newPrimary) . ")";
         }
         else
         {
@@ -228,19 +200,17 @@ class TableEditor
             "ALTER TABLE `" . $this->m_name . "` " .
             "DROP PRIMARY KEY, ADD PRIMARY KEY " . $primaryKeyString;
         
-        $result = $this->m_mysqliConn->query($query);
-        return $result;
+        $this->m_mysqliConn->query($query);
     }
     
     
     /**
-     * Change the tables engine to something else. Please make use of this classes constants
+     * Change the tables engine to something else. Please make use of the classes constants
      * when providing the engine parameter.
      * @param String $engine - the name of the engine to change to.
-     * @return type
-     * @throws Exception
+     * @throws Exception - if the query failed
      */
-    public function changeEngine($engine)
+    public function changeEngine(string $engine) : void
     {
         $allowed_engines = array(
             self::ENGINE_INNODB,
@@ -249,14 +219,10 @@ class TableEditor
         
         if (!in_array($engine, $allowed_engines))
         {
-            throw new \Exception('Unrecognized engine: ' . $engine);
+            throw new Exception('Unrecognized engine: ' . $engine);
         }
         
-        $query = 
-            "ALTER TABLE `" . $this->m_name . "` " .
-            "ENGINE=" . $engine;
-        
-        $result = $this->m_mysqliConn->query($query);
-        return $result;
+        $query = "ALTER TABLE `{$this->m_name}` ENGINE={$engine}";
+        $this->m_mysqliConn->query($query);
     }
 }
