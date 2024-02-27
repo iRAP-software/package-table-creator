@@ -1,2 +1,7 @@
+vendor
+
+# ignore composer.lock file as this is a PHP package
+composer.lock
+
 # ignore PhpStorm IDE files.
 .idea
