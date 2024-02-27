@@ -13,7 +13,8 @@ use mysqli;
 
 class TableEditor
 {
-    private string $m_name; # The name of this table
+    private string $m_tableName; # The name of this table
+    private string $m_escapedTableName; # The name of this table
 
     private mysqli $m_mysqliConn; # the mysqli connection to the database.
     
@@ -30,7 +31,8 @@ class TableEditor
     public function __construct(mysqli $mysqliConn, string $name)
     {
         $this->m_mysqliConn = $mysqliConn;
-        $this->m_name = $name;
+        $this->m_tableName = $name;
+        $this->m_escapedTableName = mysqli_escape_string($mysqliConn, $name);
     }
 
 
@@ -63,6 +65,7 @@ class TableEditor
             {
                 $errMsg = 'Do not set field to be primary key when adding fields. ' .
                           'Instead, use the changePrimaryKey method';
+
                 throw new Exception($errMsg);
             }
             elseif ($field->isKey())
@@ -77,13 +80,13 @@ class TableEditor
                     $keysString .= "UNIQUE ";
                 }
                 
-                $keysString .= "KEY (`" . $fieldName . "`) ";
+                $keysString .= "KEY (`" . mysqli_escape_string($this->m_mysqliConn, $fieldName) . "`) ";
             }
         }
         
         $fieldsString = implode(", ", $fieldStrings);
         $fieldsString .= $keysString;
-        $query = "ALTER TABLE `{$this->m_name}` ADD ({$fieldsString})";
+        $query = "ALTER TABLE `{$this->m_escapedTableName}` ADD ({$fieldsString})";
         $this->m_mysqliConn->query($query);
     }
     
@@ -94,7 +97,8 @@ class TableEditor
      */
     public function removeField(string $fieldName) : void
     {
-        $query = "ALTER TABLE `{$this->m_name}` DROP COLUMN `{$fieldName}`";
+        $escapedFieldName = mysqli_escape_string($this->m_mysqliConn, $fieldName);
+        $query = "ALTER TABLE `{$this->m_tableName}` DROP COLUMN `{$escapedFieldName}`";
         $this->m_mysqliConn->query($query);
     }
     
@@ -120,14 +124,14 @@ class TableEditor
     {
         if (is_array($key))
         {
-            $keyString = "(" . implode(',', $key) . ")";
+            $keyString = "(" . implode(',', $this->escapeArray($key)) . ")";
         }
         else
         {
-            $keyString = "`" . $key . "`";
+            $keyString = "`" . mysqli_escape_string($this->m_mysqliConn, $key) . "`";
         }
         
-        $query = "ALTER TABLE `{$this->m_name}` DROP INDEX {$keyString}";
+        $query = "ALTER TABLE `{$this->m_tableName}` DROP INDEX {$keyString}";
         $this->m_mysqliConn->query($query);
     }
 
@@ -159,11 +163,11 @@ class TableEditor
     {
         if (is_array($key))
         {
-            $keyString = implode(",", $key);
+            $keyString = implode(",", $this->escapeArray($key));
         }
         else
         {
-            $keyString = "`" . $key . "`";
+            $keyString = "`" . mysqli_escape_string($this->m_mysqliConn, $key) . "`";
         }
         
         $uniqueString = "";
@@ -173,7 +177,7 @@ class TableEditor
             $uniqueString = "UNIQUE";
         }
         
-        $query = "ALTER TABLE `{$this->m_name}` ADD {$uniqueString} KEY({$keyString})";
+        $query = "ALTER TABLE `{$this->m_tableName}` ADD {$uniqueString} KEY({$keyString})";
         $this->m_mysqliConn->query($query);
     }
     
@@ -189,15 +193,15 @@ class TableEditor
     {
         if (is_array($newPrimary))
         {
-            $primaryKeyString = "(" . implode(",", $newPrimary) . ")";
+            $primaryKeyString = "(" . implode(",", $this->escapeArray($newPrimary)) . ")";
         }
         else
         {
-            $primaryKeyString = "(`" . $newPrimary . "`)";
+            $primaryKeyString = "(`" . mysqli_escape_string($this->m_mysqliConn, $newPrimary) . "`)";
         }
         
         $query = 
-            "ALTER TABLE `" . $this->m_name . "` " .
+            "ALTER TABLE `{$this->m_escapedTableName}` " .
             "DROP PRIMARY KEY, ADD PRIMARY KEY " . $primaryKeyString;
         
         $this->m_mysqliConn->query($query);
@@ -222,7 +226,26 @@ class TableEditor
             throw new Exception('Unrecognized engine: ' . $engine);
         }
         
-        $query = "ALTER TABLE `{$this->m_name}` ENGINE={$engine}";
+        $query = "ALTER TABLE `{$this->m_escapedTableName}` ENGINE={$engine}";
         $this->m_mysqliConn->query($query);
+    }
+
+
+    /**
+     * Helper method that creates a new version of the array, but this time it's values are escaped
+     * for MySQL, using the database connection provided.
+     * @param array $input - the input array to create an escaped version of.
+     * @return array - the escaped form of the array.
+     */
+    private function escapeArray(array $input) : array
+    {
+        $output = [];
+
+        foreach ($input as $key => $value)
+        {
+            $output[$key] = mysqli_escape_string($this->m_mysqliConn, $value);
+        }
+
+        return $output;
     }
 }

@@ -205,7 +205,8 @@ class TableCreator
         
         foreach ($this->m_fields as $field_name => $field)
         {
-            $fieldStrings[] = $field->getFieldString();
+            /* @var $field DatabaseField */
+            $fieldStrings[] = $field->getFieldString($this->m_mysqliConn);
                 
             /* @var $field DatabaseField */
             if ($field->isKey())
@@ -220,7 +221,7 @@ class TableCreator
                     $keysString .= "UNIQUE ";
                 }
                 
-                $keysString .= "KEY (`" . $field_name . "`) ";
+                $keysString .= "KEY (`" . mysqli_escape_string($this->m_mysqliConn, $field_name) . "`) ";
             }
         }
         
@@ -235,7 +236,7 @@ class TableCreator
                 $keysString .= ", ";
             }
 
-            $keysString .= "KEY (" . implode(",", $key) . ") ";
+            $keysString .= "KEY (" . implode(",", $this->escapeArray($key)) . ") ";
         }
         
         
@@ -244,9 +245,9 @@ class TableCreator
         {
             foreach ($this->m_foreignKeys as $foreign_key_obj)
             {
-                $table_column     = $foreign_key_obj->table_column;
-                $reference_table  = $foreign_key_obj->reference_table;
-                $reference_column = $foreign_key_obj->reference_column;
+                $escapedTableColumn     = mysqli_escape_string($this->m_mysqliConn, $foreign_key_obj->table_column);
+                $escapedReferenceTable  = mysqli_escape_string($this->m_mysqliConn, $foreign_key_obj->reference_table);
+                $escapedReferenceColumn = mysqli_escape_string($this->m_mysqliConn, $foreign_key_obj->reference_column);
                 $deleteCascade   = $foreign_key_obj->delete_cascade;
                 $updateCascade   = $foreign_key_obj->update_cascade;
                 
@@ -256,8 +257,8 @@ class TableCreator
                 }
                 
                 $keysString .= 
-                    'FOREIGN KEY (`' . $table_column . '`) ' .
-                    'REFERENCES `' . $reference_table . '` (`' . $reference_column . '`) ';
+                    'FOREIGN KEY (`' . $escapedTableColumn . '`) ' .
+                    'REFERENCES `' . $escapedReferenceTable . '` (`' . $escapedReferenceColumn . '`) ';
                 
                 if ($deleteCascade)
                 {
@@ -279,13 +280,13 @@ class TableCreator
                 $keysString .= ", ";
             }
             
-            $keysString .= "UNIQUE KEY (" . implode(",", $key) . ") ";
+            $keysString .= "UNIQUE KEY (" . implode(",", $this->escapeArray($key)) . ") ";
         }
         
         # Add the Primary key (can only be one)
         if ($this->m_primaryKey !== null)
         {
-            $primaryKeyString = "PRIMARY KEY (" . implode(",", $this->m_primaryKey) . ") ";
+            $primaryKeyString = "PRIMARY KEY (" . implode(",", $this->escapeArray($this->m_primaryKey)) . ") ";
         }
         
         $engine_string = "ENGINE=" . $this->m_engine . " ";
@@ -366,7 +367,7 @@ class TableCreator
      *                          big5 or utf8mb4
      * @throws Exception - if invalid character set was specified.
      */
-    public function setCharacterSet($charSet) : void
+    public function setCharacterSet(string $charSet) : void
     {
         $possible_encodings = array(
             "big5",
@@ -549,5 +550,24 @@ class TableCreator
         }
         
         return $field;
+    }
+
+
+    /**
+     * Helper method that creates a new version of the array, but this time it's values are escaped
+     * for MySQL, using the database connection provided.
+     * @param array $input - the input array to create an escaped version of.
+     * @return array - the escaped form of the array.
+     */
+    private function escapeArray(array $input) : array
+    {
+        $output = [];
+
+        foreach ($input as $key => $value)
+        {
+            $output[$key] = mysqli_escape_string($this->m_mysqliConn, $value);
+        }
+
+        return $output;
     }
 }

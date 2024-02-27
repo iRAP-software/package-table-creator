@@ -359,15 +359,17 @@ class DatabaseField
             $this->m_default = 'NULL';
         }
     }
-    
-    
+
+
     /**
      * Returns the text representing this field's definition inside a "CREATE TABLE" statement.
-     * @return string - the string for defining this field in a mysql table.
+     * @param \mysqli $db - the database connection that will be used, so can escape against it.
+     * @return string - the generated field string.
      */
-    public function getFieldString() : string
+    public function getFieldString(\mysqli $db) : string
     {
-        $fieldString = "`" . $this->m_name . "` " . $this->m_type;
+        $escapedName = mysqli_escape_string($db, $this->m_name);
+        $fieldString = "`{$escapedName}` {$this->m_type}";
         
         if ($this->m_constraint != null)
         {
