@@ -10,18 +10,18 @@ namespace iRAP\TableCreator;
 
 class DatabaseField
 {
-    private $m_name; # e.g. the column name.
-    private $m_type;
-    private $m_default           = null; # This is very different to 'NULL'
-    private $m_autoIncrementing  = false;
-    private $m_constraint        = null;
-    private $m_allowNull         = false;
-    private $m_isKey             = false;
-    private $m_isUnique          = false; # only affects if is_key set to true
-    private $m_isPrimary         = false; # only affects if is_key set to true
+    private string $m_name; # e.g. the column name.
+    private string $m_type;
+    private mixed $m_default = null; # This is very different to 'NULL'
+    private bool $m_autoIncrementing = false;
+    private mixed $m_constraint = null;
+    private bool $m_allowNull = false;
+    private bool $m_isKey = false;
+    private bool $m_isUnique = false; # only affects if is_key set to true
+    private bool $m_isPrimary = false; # only affects if is_key set to true
     
     
-    # Sepcify the types for easy creation (prevent typos/mistakes)
+    # Specify the types for easy creation (prevent typos/mistakes)
     const TYPE_CHAR      = 'CHAR';
     const TYPE_VARCHAR   = 'VARCHAR';
     const TYPE_TINYTEXT  = 'TINYTEXT';
@@ -43,141 +43,128 @@ class DatabaseField
     const TYPE_GEOMETRY_COLLECTION = "GEOMETRYCOLLECTION";
     const TYPE_GEOMETRY            = "GEOMETRY";
     
-    
+
     /**
-     * Private constructor because this object must be created by one of the 
-     * various 'factory' static methods.
-     * @param type $name - the name of the field/column.
+     * Private constructor because this object must be created by one of the
+     *  various 'factory' static methods.
+     * @param string $name - the name of the field/column.
+     * @param string $type - the type of field. E.g. "VARCHAR"
      */
-    private function __construct($name, $type) 
+    private function __construct(string $name, string $type)
     {
         $this->m_name = $name;
         $this->m_type = $type;
     }
-    
-    
+
+
     /**
-     * for creating a varchar.
-     * @param type $numChars
-     * @param type $allow_null
-     * @param type $default_null
-     * @return array $specification - the specification necessary for dbforge.
+     * Creates a char field.
+     * @param string $name - the name for the field.
+     * @param int $size - the number of chars the field should contain.
+     * @return DatabaseField
      */
-    public static function createChar($name, $size)
+    public static function createChar(string $name, int $size) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_CHAR);
-        $field->m_constraint = intval($size);
+        $field->m_constraint = $size;
         return $field;
     }
-    
-    
+
+
     /**
      * Create a VARCHAR field
      * @param string $name - the name to give the field
      * @param int $size - how many characters the field can hold
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createVarchar($name, $size)
+    public static function createVarchar(string $name, int $size) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_VARCHAR);
-        $field->m_constraint = intval($size);
+        $field->m_constraint = $size;
         return $field;
     }
-    
-    
+
+
     /**
      * Factory method for creating a boolean (tiny int) type
      * @param string $name - the name of the field/column
-     * @return iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createBool($name)
+    public static function createBool(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_TINY_INT);
         $field->m_constraint = 1;
         return $field;
     }
-    
-    
+
+
     /**
      * Creates a date field in the database (yyyy-mm-dd).
-     * @param type $name
-     * @return $field DatabaseField
+     * @param string $name
+     * @return DatabaseField
      */
-    public static function createDate($name)
+    public static function createDate(string $name) : DatabaseField
     {
-        $field = new DatabaseField($name, self::TYPE_DATE);
-        return $field;
+        return new DatabaseField($name, self::TYPE_DATE);
     }
-    
-    
+
+
     /**
      * Factory method for creating a TEXT type database field
-     * @param type $name - the name of the field for when it is in the database;
-     * @return \iRAP\TableCreator\DatabaseField
+     * @param string $name - the name of the field for when it is in the database;
+     * @return DatabaseField
      */
-    public static function createText($name)
+    public static function createText(string $name) : DatabaseField
     {
-        $field = new DatabaseField($name, self::TYPE_TEXT);
-        return $field;
+        return new DatabaseField($name, self::TYPE_TEXT);
     }
-    
-    
+
+
     /**
      * Factory method for creating a TINYTEXT type database field
-     * @param type $name - the name of the field for when it is in the database;
-     * @return \iRAP\TableCreator\DatabaseField
+     * @param string $name - the name of the field for when it is in the database;
+     * @return DatabaseField
      */
-    public static function createTinyText($name)
+    public static function createTinyText(string $name) : DatabaseField
     {
-        $field = new DatabaseField($name, self::TYPE_TINYTEXT);
-        return $field;
+        return new DatabaseField($name, self::TYPE_TINYTEXT);
     }
-    
-    
+
+
     /**
      * Factory method for creating a LONG_TEXT type database field
-     * @param type $name - the name of the field for when it is in the database;
-     * @return \iRAP\TableCreator\DatabaseField
+     * @param string $name - the name of the field for when it is in the database;
+     * @return DatabaseField
      */
-    public static function createLongText($name)
+    public static function createLongText(string $name) : DatabaseField
     {
-        $field = new DatabaseField($name, self::TYPE_LONGTEXT);
-        return $field;
+        return new DatabaseField($name, self::TYPE_LONGTEXT);
     }
     
-    
+
     /**
      * Creates an integer type field.
      * @param string $name
-     * @param int $size - the size the int can reach, 
-     *                    e.g. 2 means you can reach the number 99
-     * @param bool $autoInc - auto increment the field 
-     *                        (will mark it as primary key!)
-     * @return \iRAP\TableCreator\DatabaseField
+     * @param int $size - the size the int can reach, e.g. 2 means you can reach the number 99
+     * @param bool $autoInc - auto increment the field (will mark it as primary key!)
+     * @return DatabaseField
      */
-    public static function createInt($name, $size, $autoInc=false)
+    public static function createInt(string $name, int $size, bool $autoInc=false) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_INT);
         $field->m_constraint = $size;
         $field->m_autoIncrementing = $autoInc;
-        
         return $field;
     }
-    
-    
+
+
     /**
-     * Creates an timestamp type field.
-     * By default, if a default value is not specified, the field will default to
-     * the current timestamp and will automatically update to the current timestamp
-     * whenever any of the other fields in the row changes. To stop the ON UPDATE 
-     * behaviour, set a default value (such as "CURRENT_TIMESTAMP")
      * @param string $name - the name of the database field
-     * @param bool $defaultValue - specify a default value for when creating rows.
-     *                             defining this will prevent the field automatically
-     *                             updating whenever another field in the row changes.
-     * @return \iRAP\TableCreator\DatabaseField
+     * @param string|null $defaultValue - specify a default value for when creating rows. Defining this will prevent
+     * the field automatically updating whenever another field in the row changes.
+     * @return DatabaseField
      */
-    public static function createTimestamp($name, $defaultValue=NULL)
+    public static function createTimestamp(string $name, ?string $defaultValue = null) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_TIMESTAMP);
         
@@ -194,19 +181,19 @@ class DatabaseField
      * Creates the DECIMAL field type
      * @param string $name - the name of the field/column in the database.
      * @param int $precisionBefore - the precision before the decimal place. 
-     *                                eg. 2 means you can reach the number 99
+     *                                e.g. 2 means you can reach the number 99
      * @param int $precisionAfter - precision after the decimal place. 
      *                               e.g. 2 means you can be accurate to 0.01
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createDecimal($name, 
-                                         $precisionBefore, 
-                                         $precisionAfter)
+    public static function createDecimal(
+        string $name,
+        int $precisionBefore,
+        int $precisionAfter
+    ) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_DECIMAL);
-        
-        $field->m_constraint = intval($precisionBefore) . ',' . 
-                               intval($precisionAfter);
+        $field->m_constraint = "{$precisionBefore},{$precisionAfter}";
         return $field;
     }
     
@@ -215,12 +202,11 @@ class DatabaseField
      * Create a POINT field
      * https://mariadb.com/kb/en/mariadb/point/
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createPoint($name)
+    public static function createPoint(string $name) : DatabaseField
     {
-        $field = new DatabaseField($name, self::TYPE_POINT);
-        return $field;
+        return new DatabaseField($name, self::TYPE_POINT);
     }
     
     
@@ -228,9 +214,9 @@ class DatabaseField
      * Create a LineString field
      * https://mariadb.com/kb/en/mariadb/linestring/
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createLineString($name)
+    public static function createLineString(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_LINESTRING);
         return $field;
@@ -240,9 +226,9 @@ class DatabaseField
      * Create a Polygon field
      * https://mariadb.com/kb/en/mariadb/polygon/
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createPolygon($name)
+    public static function createPolygon(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_POLYGON);
         return $field;
@@ -253,9 +239,9 @@ class DatabaseField
      * Create a MultiPoint field
      * https://mariadb.com/kb/en/mariadb/multipoint/
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createMultiPoint($name)
+    public static function createMultiPoint(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_MULTI_POINT);
         return $field;
@@ -266,9 +252,9 @@ class DatabaseField
      * Create a MultiPoint field
      * https://mariadb.com/kb/en/mariadb/multilinestring/
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createMultiLineString($name)
+    public static function createMultiLineString(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_MULTI_LINE_STRING);
         return $field;
@@ -279,9 +265,9 @@ class DatabaseField
      * Create a MultiPoint field
      * https://mariadb.com/kb/en/mariadb/multipolygon/
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createMultiPolygon($name)
+    public static function createMultiPolygon(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_MULTI_POLYGON);
         return $field;
@@ -292,9 +278,9 @@ class DatabaseField
      * Create a GeometryCollection field
      * https://mariadb.com/kb/en/mariadb/geometrycollection/
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createGeometryCollection($name)
+    public static function createGeometryCollection(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_GEOMETRY_COLLECTION);
         return $field;
@@ -305,9 +291,9 @@ class DatabaseField
      * Create a geometry field
      * https://mariadb.com/kb/en/mariadb/geometry-types/#geometrygeometry
      * @param string $name - the name to give the field/column
-     * @return \iRAP\TableCreator\DatabaseField
+     * @return DatabaseField
      */
-    public static function createGeometry($name)
+    public static function createGeometry(string $name) : DatabaseField
     {
         $field = new DatabaseField($name, self::TYPE_GEOMETRY);
         return $field;
@@ -320,7 +306,7 @@ class DatabaseField
      * Specify that this field is allowed to be null.
      * @return void
      */
-    public function setAllowNull()
+    public function setAllowNull() : void
     {
         $this->m_allowNull = true;
     }
@@ -331,7 +317,7 @@ class DatabaseField
      * Just in case someone uses prototypes for rapid creation on one that has 
      * null enabled and then wants to disable on certain fields.
      */
-    public function disableNull()
+    public function disableNull() : void
     {
         $this->m_allowNull = true;
         
@@ -346,7 +332,7 @@ class DatabaseField
      * Specify that this field acts as a key (but is not a primary key)
      * @param bool $unique - optionally set to true to make this a UNIQUE key.
      */
-    public function setKey($unique=false)
+    public function setKey(bool $unique=false) : void
     {
         $this->m_isKey = true;
         $this->m_isUnique = $unique;
@@ -357,7 +343,7 @@ class DatabaseField
      * Sets the default for this field.
      * @param mixed $default - the default value for this field in the database
      */
-    public function setDefault($default)
+    public function setDefault(mixed $default) : void
     {
         $this->m_default = $default;
         
@@ -370,11 +356,10 @@ class DatabaseField
     
     
     /**
-     * Returns the text representing this field's definition inside a create 
-     * table statement.
+     * Returns the text representing this field's definition inside a "CREATE TABLE" statement.
      * @return string - the string for defining this field in a mysql table.
      */
-    public function getFieldString()
+    public function getFieldString() : string
     {
         $fieldString = "`" . $this->m_name . "` " . $this->m_type;
         
@@ -403,13 +388,13 @@ class DatabaseField
     
 
     # Accessors
-    public function getName()             { return $this->m_name; }
-    public function getType()             { return $this->m_type; }
-    public function getDefault()          { return $this->m_default; }
-    public function getConstraint()       { return $this->m_constraint; }
-    public function getAllowNull()        { return $this->m_allowNull; }
-    public function isKey()               { return $this->m_isKey; }
-    public function isPrimaryKey()        { return $this->m_isPrimary; }
-    public function isUnique()            { return $this->m_isUnique; }
-    public function isAutoIncrementing()  { return $this->m_autoIncrementing; }
+    public function getName() : string { return $this->m_name; }
+    public function getType() : string { return $this->m_type; }
+    public function getDefault() : mixed { return $this->m_default; }
+    public function getConstraint() : mixed { return $this->m_constraint; }
+    public function getAllowNull() : bool { return $this->m_allowNull; }
+    public function isKey() : bool { return $this->m_isKey; }
+    public function isPrimaryKey() : bool { return $this->m_isPrimary; }
+    public function isUnique() : bool { return $this->m_isUnique; }
+    public function isAutoIncrementing() : bool { return $this->m_autoIncrementing; }
 }
