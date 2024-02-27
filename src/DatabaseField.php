@@ -180,20 +180,26 @@ class DatabaseField
     /**
      * Creates the DECIMAL field type
      * @param string $name - the name of the field/column in the database.
-     * @param int $precisionBefore - the precision before the decimal place. 
-     *                                e.g. 2 means you can reach the number 99
-     * @param int $precisionAfter - precision after the decimal place. 
+     * @param int $maxNumDigits - the maximum number of digits. E.g. if this is 5 and the decimalPrecision is 2, then
+     * the max value would be 999.99. This number must be greater than or equal to $decimalPrecision.
+     * @param int $decimalPrecision - precision after the decimal place.
      *                               e.g. 2 means you can be accurate to 0.01
      * @return DatabaseField
+     * @throws \Exception - if value for $maxNumDigits is less than $decimalPrecision
      */
     public static function createDecimal(
         string $name,
-        int $precisionBefore,
-        int $precisionAfter
+        int    $maxNumDigits,
+        int $decimalPrecision
     ) : DatabaseField
     {
+        if ($maxNumDigits < $decimalPrecision)
+        {
+            throw new \Exception('$maxNumDigits must be greater than or equal to $decimalPrecision');
+        }
+
         $field = new DatabaseField($name, self::TYPE_DECIMAL);
-        $field->m_constraint = "{$precisionBefore},{$precisionAfter}";
+        $field->m_constraint = "{$maxNumDigits},{$decimalPrecision}";
         return $field;
     }
     

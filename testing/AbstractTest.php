@@ -4,13 +4,14 @@
  * Abstract test that all tests should extend.
  */
 
-namespace iRAP\TableCreator;
+namespace iRAP\TableCreator\Testing;
 
 abstract class AbstractTest
 {
-    protected $m_passed = false;
-    protected $m_errorMessage = "";
-    
+    protected bool $m_passed = false;
+    protected string $m_errorMessage = "";
+
+
     /**
      * Clean the database by removing all tables.
      * Code taken from 
@@ -18,7 +19,6 @@ abstract class AbstractTest
      */
     private function cleanDatabase($mysqli)
     {
-        
         $mysqli->query('SET foreign_key_checks = 0');
         
         $result = $mysqli->query("SHOW TABLES");
@@ -36,7 +36,6 @@ abstract class AbstractTest
         }
         
         $mysqli->query('SET foreign_key_checks = 1');
-        $mysqli->close();
     }
     
     
@@ -62,7 +61,7 @@ abstract class AbstractTest
             $this->m_passed = false;
             $this->m_errorMessage = $ex->getMessage();
         }
-        
+
         $mysqli->close();
     }
     

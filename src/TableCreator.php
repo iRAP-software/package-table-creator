@@ -21,7 +21,7 @@ class TableCreator
     private string $m_engine;
     private array $m_combinedKeys = array(); # multi-column keys
     private array $m_combinedUniqueKeys = array(); # unique multi-column keys
-    private ?array $m_primaryKey; # either null for not set, or an array of the names of the fields that form the primary key
+    private ?array $m_primaryKey = null; # either null for not set, or an array of the names of the fields that form the primary key
     private array $m_foreignKeys = array();
     private mysqli $m_mysqliConn; # the mysqli connection to the database.
     private ?string $m_charSet = null; # if left null, will utilize the db default.
@@ -280,7 +280,7 @@ class TableCreator
         }
         
         # Add the Primary key (can only be one)
-        if ($this->m_primaryKey != null)
+        if ($this->m_primaryKey !== null)
         {
             $primaryKeyString = "PRIMARY KEY (" . implode(",", $this->m_primaryKey) . ") ";
         }
@@ -303,16 +303,10 @@ class TableCreator
 
         if ($this->m_charSet !== null)
         {
-            $characterset_string = "DEFAULT CHARSET=" . $this->m_charSet . " ";
+            $characterset_string = " DEFAULT CHARSET={$this->m_charSet}";
         }
         
-        $query = 
-            "CREATE TABLE " . 
-            '`' . $this->m_name . '` ' . 
-            "(" . $fieldsString . ") " . 
-            $engine_string . 
-            $characterset_string;
-        
+        $query = "CREATE TABLE `{$this->m_name}` ({$fieldsString}) {$engine_string}{$characterset_string}";
         $result = $this->m_mysqliConn->query($query);
         
         if ($result !== TRUE)
