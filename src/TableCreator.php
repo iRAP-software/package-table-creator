@@ -10,17 +10,22 @@
 namespace iRAP\TableCreator;
 
 
+use Exception;
+use mysqli;
+use stdClass;
+
 class TableCreator
 {
-    private $m_name; # The name of this table
-    private $m_fields = array(); # DatabaseField objects table consists of.
-    private $m_engine;
-    private $m_combinedKeys = array(); # multi-column keys
-    private $m_combinedUniqueKeys = array(); # unique multi-column keys
-    private $m_primaryKey;
-    private $m_foreignKeys = array();
-    private $m_mysqliConn; # the mysqli connection to the database.
-    private $m_charSet = null; # if left null, will utilize the db default.
+    private string $m_tableName; # The name of this table
+    private string $m_escapedTableName; # The name of this table
+    private array $m_fields = array(); # DatabaseField objects table consists of.
+    private string $m_engine;
+    private array $m_combinedKeys = array(); # multi-column keys
+    private array $m_combinedUniqueKeys = array(); # unique multi-column keys
+    private ?array $m_primaryKey = null; # either null for not set, or an array of the names of the fields that form the primary key
+    private array $m_foreignKeys = array();
+    private mysqli $m_mysqliConn; # the mysqli connection to the database.
+    private ?string $m_charSet = null; # if left null, will utilize the db default.
     
     const ENGINE_INNODB = 'INNODB';
     const ENGINE_MYISAM = 'MYISAM';
@@ -28,19 +33,19 @@ class TableCreator
     
     /**
      * Create a MySQL table creator.
-     * @param Mys$mysqliConn
+     * @param mysqli $conn
      * @param string $name - the name of the table
-     * @param string $engine - the engine, e.g use one of this classes ENGINE 
-     *                         constants
-     * @param array $fields - optionally specify the list of DatabaseField
-                              objects that this table consists of. They can 
-     *                        always be specified later with addField functions.
+     * @param string $engine - the engine, e.g. use one of this classes ENGINE constants
+     * @param array $fields - optionally specify the list of DatabaseField objects that this table consists of. They
+     * can always be specified later with addField functions.
      * @throws Exception
      */
-    public function __construct(\mysqli $conn,
-                                $name, 
-                                $engine="INNODB", 
-                                array $fields = array())
+    public function __construct(
+        mysqli $conn,
+        string $name,
+        string $engine = "INNODB",
+        array $fields = array()
+    )
     {
         $this->m_mysqliConn = $conn;
         
@@ -48,11 +53,12 @@ class TableCreator
         
         if (!in_array($engine, $allowed_engines))
         {
-            throw new \Exception('table [' . $name . '] engine must be one ' .
+            throw new Exception('table [' . $name . '] engine must be one ' .
                                  'of the allowed types.');
         }
         
-        $this->m_name = $name;
+        $this->m_tableName = $name;
+        $this->m_escapedTableName = mysqli_escape_string($this->m_mysqliConn, $this->m_tableName);
         $this->m_engine = $engine;
         
         $this->addFields($fields);
@@ -63,7 +69,7 @@ class TableCreator
      * Adds the specified fields to this table.
      * @param array $fields - an array of DatabaseField objects
      */
-    public function addFields(array $fields)
+    public function addFields(array $fields) : void
     {
         foreach ($fields as $field)
         {
@@ -71,42 +77,46 @@ class TableCreator
         }
     }
     
-    
+
     /**
      * Adds the DatabaseField object to this table.
      * @param DatabaseField $field
+     * @return void
      */
-    public function addField(DatabaseField $field)
+    public function addField(DatabaseField $field) : void
     {
         $name = $field->getName();
         $this->m_fields[$name] = $field; # we key by name to prevent duplicates!
     }
     
     
+
     /**
      * Given a list of $keys, this adds each one as a key. A key can be a field
      * name or an array of field names which represents a combined-key.
-     * @param array $keys - array of field names or arrays that represent a 
-     *                      combined-key
+     * @param array $keys - array of field names or arrays that represent a combined-key
+     * @param bool $unique - whether these keys are unique or not (default false).
      * @return void
+     * @throws Exception
      */
-    public function addKeys(array $keys, $unique=false)
+    public function addKeys(array $keys, bool $unique = false) : void
     {
         foreach ($keys as $key)
         {
             $this->addKey($key, $unique);
         }
     }
-    
-    
+
+
     /**
      * Adds a key to the table. This is NOT for primary keys.
-     * @param mixed $key - string representing the field name to act as key, 
-     *                     or array of field names for a single "combined" key.
+     * @param array|string $key - a string representing the field name to act as key, or an array of field names for a
+     * single "combined" key.
      * @param bool $unique - optionally set to true to make this a unique key.
-     * @return void.
+     * @return void
+     * @throws Exception - if one of the fields in the key is not found in the table.
      */
-    public function addKey($key, $unique=false)
+    public function addKey(array|string $key, bool $unique = false) : void
     {
         if (is_array($key))
         {
@@ -125,11 +135,11 @@ class TableCreator
             {
                 $err_msg = 
                     'Table Creator: one or more fields in combined key not ' .
-                    'found in table [' . $this->m_name . '] with fields: ' . 
+                    'found in table [' . $this->m_tableName . '] with fields: ' .
                     print_r($this->m_fields, true) . PHP_EOL .
                     'when adding key: ' . print_r($key, true);
 
-                throw new \Exception($err_msg);
+                throw new Exception($err_msg);
             }
         }
         else
@@ -141,9 +151,9 @@ class TableCreator
             else
             {
                 $err_msg = '[' . $key . '] field not found in table ' .
-                           '[' . $this->m_name . '] when adding a key';
+                           '[' . $this->m_tableName . '] when adding a key';
                 
-                throw new \Exception($err_msg);
+                throw new Exception($err_msg);
             }
         }
     }
@@ -154,21 +164,23 @@ class TableCreator
      * @param string $table_column - the column of this table that references 
      *                               another
      * @param string $reference_table - the table that we are referencing
-     * @param string $reference_column - the name of column that should contain 
-     *                                   the same value as the 
-     *                                   value within this tables $table_column
+     * @param string $reference_column - the name of column that should contain the same value as the value within this
+     * tables $table_column
      * @param bool $delete_cascade - override to true to have deletion cascade 
      *                               to child tables
      * @param bool $update_cascade - override to true to have updates carry 
      *                               over to child tables
+     * @return void
      */
-    public function addForeignKey($table_column, 
-                                  $reference_table, 
-                                  $reference_column, 
-                                  $delete_cascade = false, 
-                                  $update_cascade = false)
+    public function addForeignKey(
+        string $table_column,
+        string $reference_table,
+        string $reference_column,
+        bool $delete_cascade = false,
+        bool $update_cascade = false
+    ) : void
     {
-        $foreignKey = new \stdClass();
+        $foreignKey = new stdClass();
         $foreignKey->table_column     = $table_column;
         $foreignKey->reference_table  = $reference_table;
         $foreignKey->reference_column = $reference_column;
@@ -177,16 +189,15 @@ class TableCreator
         
         $this->m_foreignKeys[] = $foreignKey;
     }
-    
-    
-    
+
+
     /**
-     * After having configured evertying, this actually creates the query and 
+     * After having configured everything, this actually creates the query and
      * executes it to create the table.
-     * @param void
      * @return void
+     * @throws Exception - if the query to create the table failed.
      */
-    public function run()
+    public function run() : void
     {
         $keysString = "";
         $primaryKeyString = "";
@@ -194,7 +205,8 @@ class TableCreator
         
         foreach ($this->m_fields as $field_name => $field)
         {
-            $fieldStrings[] = $field->getFieldString();
+            /* @var $field DatabaseField */
+            $fieldStrings[] = $field->getFieldString($this->m_mysqliConn);
                 
             /* @var $field DatabaseField */
             if ($field->isKey())
@@ -209,7 +221,7 @@ class TableCreator
                     $keysString .= "UNIQUE ";
                 }
                 
-                $keysString .= "KEY (`" . $field_name . "`) ";
+                $keysString .= "KEY (`" . mysqli_escape_string($this->m_mysqliConn, $field_name) . "`) ";
             }
         }
         
@@ -224,7 +236,7 @@ class TableCreator
                 $keysString .= ", ";
             }
 
-            $keysString .= "KEY (" . implode(",", $key) . ") ";
+            $keysString .= "KEY (" . implode(",", $this->escapeArray($key)) . ") ";
         }
         
         
@@ -233,9 +245,9 @@ class TableCreator
         {
             foreach ($this->m_foreignKeys as $foreign_key_obj)
             {
-                $table_column     = $foreign_key_obj->table_column;
-                $reference_table  = $foreign_key_obj->reference_table;
-                $reference_column = $foreign_key_obj->reference_column;
+                $escapedTableColumn     = mysqli_escape_string($this->m_mysqliConn, $foreign_key_obj->table_column);
+                $escapedReferenceTable  = mysqli_escape_string($this->m_mysqliConn, $foreign_key_obj->reference_table);
+                $escapedReferenceColumn = mysqli_escape_string($this->m_mysqliConn, $foreign_key_obj->reference_column);
                 $deleteCascade   = $foreign_key_obj->delete_cascade;
                 $updateCascade   = $foreign_key_obj->update_cascade;
                 
@@ -245,8 +257,8 @@ class TableCreator
                 }
                 
                 $keysString .= 
-                    'FOREIGN KEY (`' . $table_column . '`) ' .
-                    'REFERENCES `' . $reference_table . '` (`' . $reference_column . '`) ';
+                    'FOREIGN KEY (`' . $escapedTableColumn . '`) ' .
+                    'REFERENCES `' . $escapedReferenceTable . '` (`' . $escapedReferenceColumn . '`) ';
                 
                 if ($deleteCascade)
                 {
@@ -268,13 +280,13 @@ class TableCreator
                 $keysString .= ", ";
             }
             
-            $keysString .= "UNIQUE KEY (" . implode(",", $key) . ") ";
+            $keysString .= "UNIQUE KEY (" . implode(",", $this->escapeArray($key)) . ") ";
         }
         
         # Add the Primary key (can only be one)
-        if ($this->m_primaryKey != null)
+        if ($this->m_primaryKey !== null)
         {
-            $primaryKeyString = "PRIMARY KEY (" . implode(",", $this->m_primaryKey) . ") ";
+            $primaryKeyString = "PRIMARY KEY (" . implode(",", $this->escapeArray($this->m_primaryKey)) . ") ";
         }
         
         $engine_string = "ENGINE=" . $this->m_engine . " ";
@@ -291,20 +303,14 @@ class TableCreator
         }
         
         $fieldsString .= $primaryKeyString . $keysString;
-        
         $characterset_string = "";
+
         if ($this->m_charSet !== null)
         {
-            $characterset_string = "DEFAULT CHARSET=" . $this->m_charSet . " ";
+            $characterset_string = " DEFAULT CHARSET={$this->m_charSet}";
         }
         
-        $query = 
-            "CREATE TABLE " . 
-            '`' . $this->m_name . '` ' . 
-            "(" . $fieldsString . ") " . 
-            $engine_string . 
-            $characterset_string;
-        
+        $query = "CREATE TABLE `{$this->m_escapedTableName}` ({$fieldsString}) {$engine_string}{$characterset_string}";
         $result = $this->m_mysqliConn->query($query);
         
         if ($result !== TRUE)
@@ -316,18 +322,18 @@ class TableCreator
                 "Mysqli Error"  => $this->m_mysqliConn->error
             );
                 
-            throw new \Exception(json_encode($err_array, JSON_PRETTY_PRINT, JSON_UNESCAPED_SLASHES));
+            throw new Exception(json_encode($err_array, JSON_PRETTY_PRINT, JSON_UNESCAPED_SLASHES));
         }
     }
     
-    
+
     /**
-     * Given a list of field names, this will set all those fields to default 
-     * to null.
-     * @param mixed $fieldNames - either an array of field names or a single 
-     *                            field name string
+     * Given a list of field names, this will set all those fields to default to null.
+     * @param array|string $fieldNames - either an array of field names or a single field name string
+     * @return void
+     * @throws Exception - if any of the field names do not exist in the table.
      */
-    public function setDefaultNull($fieldNames)
+    public function setDefaultNull(array|string $fieldNames) : void
     {
         if (is_array($fieldNames))
         {
@@ -345,9 +351,9 @@ class TableCreator
             else
             {
                 $err_msg = '[' . $fieldNames . '] field not found in table ' .
-                           '[' . $this->m_name . '] when setting null fields';
+                           '[' . $this->m_tableName . '] when setting null fields';
 
-                throw new \Exception($err_msg);
+                throw new Exception($err_msg);
             }
         }
     }
@@ -361,7 +367,7 @@ class TableCreator
      *                          big5 or utf8mb4
      * @throws Exception - if invalid character set was specified.
      */
-    public function setCharacterSet($charSet)
+    public function setCharacterSet(string $charSet) : void
     {
         $possible_encodings = array(
             "big5",
@@ -412,17 +418,17 @@ class TableCreator
         
         $this->m_charSet = $charSet;
     }
-    
-    
+
+
     /**
-     * Given a list of field names, this will set all those fields to default 
+     * Given a list of field names, this will set all those fields to default
      * to the specified value
-     * @param mixed $fieldNames - an array of field names or a single field 
-     *                            name string
+     * @param array|string $fieldNames - an array of string field names or a single field name string
      * @param mixed $default - the default value you wish to set.
      * @return void
+     * @throws Exception - if any of the specified field names do not exist in the table.
      */
-    public function setDefault($fieldNames, $default)
+    public function setDefault(array|string $fieldNames, mixed $default) : void
     {
         if (is_array($fieldNames))
         {
@@ -441,10 +447,10 @@ class TableCreator
             {
                 $fields = print_r($this->m_fields, true);
                 $err_msg = '[' . $fieldNames . '] field not found in table ' .
-                           '[' . $this->m_name . '] when setting default ' . 
+                           '[' . $this->m_tableName . '] when setting default ' .
                            'fields. Fields: ' . $fields;
 
-                throw new \Exception($err_msg);
+                throw new Exception($err_msg);
             }
         }
     }
@@ -458,7 +464,7 @@ class TableCreator
      *                            allow null
      * @throws Exception
      */
-    public function setAllowNull(array $fieldNames)
+    public function setAllowNull(array $fieldNames) : void
     {
         foreach ($fieldNames as $field_name)
         {
@@ -469,9 +475,9 @@ class TableCreator
             else
             {
                 $err_msg = '[' . $field_name . '] field not found in table ' .
-                           '[' . $this->m_name . '] when setting allow_null';
+                           '[' . $this->m_tableName . '] when setting allow_null';
                 
-                throw new \Exception($err_msg);
+                throw new Exception($err_msg);
             }
         }
     }
@@ -485,7 +491,7 @@ class TableCreator
      * @return void
      * @throws Exception if this table does not have that field.
      */
-    public function setPrimaryKey($primary_key)
+    public function setPrimaryKey(string|array $primary_key) : void
     {
         if (is_array($primary_key))
         {
@@ -499,22 +505,18 @@ class TableCreator
     
     
     /**
-     * Returns flag for if we have all of the fields specified by name.
+     * Returns flag for if we have all the fields specified by name.
      * @param array $fields - an array of string names that represent the fields
      * @return bool - true if we have all the fields, false otherwise.
      */
-    private function hasFields($fields)
+    private function hasFields(array $fields) : bool
     {
         $hasFields = true;
-        
-        foreach ($fields as $field_name)
+
+        foreach ($fields as $fieldName)
         {
-            if (!isset($this->m_fields[$field_name]))
+            if (!isset($this->m_fields[$fieldName]))
             {
-                $dbgMsg = 'Hasfields returning that ' . $field_name . ' does ' .
-                          'not exist in ' . print_r($this->m_fields, true);
-                
-                LogModel::debugLog($dbgMsg);
                 $hasFields = false;
                 break;
             }
@@ -524,7 +526,7 @@ class TableCreator
     }
     
     
-    # Accesssors
+    # Accessors
     
     
     /**
@@ -533,10 +535,8 @@ class TableCreator
      * @return DatabaseField $field - the fetched field
      * @throws Exception if the field does not exist in this table.
      */
-    public function getField($field_name)
+    public function getField(string $field_name) : DatabaseField
     {
-        $field = null;
-        
         if (isset($this->m_fields[$field_name]))
         {
             $field = $this->m_fields[$field_name];
@@ -544,11 +544,30 @@ class TableCreator
         else
         {
             $err_msg = '[' . $field_name . '] does not exist in table ' .
-                       '[' . $this->m_name . ']';
+                       '[' . $this->m_tableName . ']';
             
-            throw new \Exception($err_msg);
+            throw new Exception($err_msg);
         }
         
         return $field;
+    }
+
+
+    /**
+     * Helper method that creates a new version of the array, but this time it's values are escaped
+     * for MySQL, using the database connection provided.
+     * @param array $input - the input array to create an escaped version of.
+     * @return array - the escaped form of the array.
+     */
+    private function escapeArray(array $input) : array
+    {
+        $output = [];
+
+        foreach ($input as $key => $value)
+        {
+            $output[$key] = mysqli_escape_string($this->m_mysqliConn, $value);
+        }
+
+        return $output;
     }
 }

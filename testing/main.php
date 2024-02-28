@@ -4,18 +4,24 @@
  * Execute all the tests and report on their progress.
  */
 
-namespace iRAP\TableCreator;
+namespace iRAP\TableCreator\Testing;
 
-require_once(__DIR__ . '/Bootstrap.php');
+use iRAP\CoreLibs\Filesystem;
+use iRAP\TableCreator\Testing\AbstractTest;
+use iRAP\TableCreator\Testing\Tests\TypesTest;
+
+require_once(__DIR__ . '/../vendor/autoload.php');
+require_once(__DIR__ . '/Settings.php');
+
 
 # Load all the tests within the tests folder and create their objects in the tests array.
 # All tests should be written so that order does not matter!
-$files = \iRAP\CoreLibs\Filesystem::getDirContents(__DIR__ . '/tests');
+$files = Filesystem::getDirContents(__DIR__ . '/tests');
 
 foreach ($files as $file)
 {
     require_once($file);
-    $className = basename($file, '.php');
+    $className = "iRAP\TableCreator\Testing\Tests\\" . basename($file, '.php');
     $tests[] = new $className();
 }
 
@@ -59,17 +65,7 @@ if (count($failedTests) > 0)
         print get_class($test) . ": " . $test->getErrorMessage() . PHP_EOL;
     }
 }
-else
-{
-    print "" . PHP_EOL;
-    print "" . PHP_EOL;
-    print "Test performance:" . PHP_EOL;
-    
-    foreach ($tests as $test)
-    {
-        print get_class($test) . ": " . $test->getTimeTaken() . PHP_EOL;
-    }
-}
+
 
 
 print "" . PHP_EOL;
