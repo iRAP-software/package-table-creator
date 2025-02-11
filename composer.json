@@ -16,7 +16,7 @@
         "ext-mysqli": "*"
     },
     "require-dev": {
-        "irap/core-libs": "1.1.*"
+        "irap/core-libs": "1.2.*"
     },
     "autoload": {
         "psr-4": {
